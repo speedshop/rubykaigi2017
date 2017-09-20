@@ -1,0 +1,58 @@
+Why does memory usage matter?
+  Embedded
+  Save some money
+  Speed
+  Memory behavior is difficult for Rubyists to understand
+  Sometimes the "bottleneck" of scaling
+Layers of Abstraction
+  Userland (your actual Ruby code)
+  Ruby runtime
+  Allocator
+  MMU (virtual/real memory)
+    Disney vs The Matrix
+Bloat
+  Pattern: Sudden spikes in memory, slow/no falloff after
+  Bloat: memory usage that's strictly necessary, but excessive.
+  Primarily a function of the runtime and userland
+  Can also happen at the allocator - remember that free does not indicate success or failure
+  Often mistaken for leaks (linear v log growth)
+  Solution(?): Pain in interfaces
+    ActiveRecord
+    Enumerable
+    Don't "think like a computer", hm?
+  Solution(?): Just allocate less
+    Sinatra vs Rails
+Fragmentation
+  Pattern: Slow, endless "logarithmic" growth in long-running Ruby programs
+  Fragmentation: memory usage that isn't strictly necessary
+  If you have 64 bytes, allocate three objects...
+  Swiss cheese over time
+  Primarily runtime + allocator
+    string - grabbing more space than needed
+    alignment padding
+    GC.stat - how to see
+    Allocator - how to see
+      contiguity is unspecified
+  Problem: per-thread arenas in glibc
+    Puma: "puma uses more memory than unicorn" (looks unbounded)
+    Heroku: cedar stack
+    Designed to reduce contention in locks
+    MALLOC_ARENA_MAX
+  Problem: Transparent Huge Pages
+    writing to a page triggers 2mb copy, not 4kb
+  May be contiguous in virtual space but not physical space
+    Locality
+  Solutions
+    Reduce allocations
+    Ruby: multiple memory pools, slabs (reuse)
+      Memcached does this
+      "buddy blocks"
+      advantage: since malloc is so implementation dependent, this gives us some control
+    Just Use Jemalloc
+    Lookahead/-pre-allocation?
+    Aaron's work/compacting heap
+    Hard defaults: disable memory arenas in glibc
+    OFC, there are tradeoffs
+      Size frequently traded off for speed
+        E.g. shyouhei proposing 8-word RVALUEs
+          https://github.com/ruby/ruby/pull/495
